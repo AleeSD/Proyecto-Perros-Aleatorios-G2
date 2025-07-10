@@ -1,4 +1,4 @@
-✅ Roles en Scrum 
+ Roles en Scrum 
 🔹 Scrum Master:
 Guía al equipo, resuelve problemas y se asegura de que se siga bien la metodología Scrum.
 

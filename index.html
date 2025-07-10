@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🐶 Galería de Perros Aleatorios</title>
+  <link rel="stylesheet" href="css/style.css">
+
+</head>
+<body>
+  <!-- Partículas de fondo -->
+  <div class="particle" style="top: 10%; left: 10%; animation-delay: 0s;"></div>
+  <div class="particle" style="top: 20%; left: 80%; animation-delay: 1s;"></div>
+  <div class="particle" style="top: 60%; left: 20%; animation-delay: 2s;"></div>
+  <div class="particle" style="top: 80%; left: 70%; animation-delay: 3s;"></div>
+  <div class="particle" style="top: 30%; left: 90%; animation-delay: 4s;"></div>
+
+  <div class="container">
+    <h1>🐶 Galería de Perros Aleatorios</h1>
+    
+    <div class="custom-select-wrapper">
+      <input type="text" id="breedInput" placeholder="Escribe una raza de perro..." autocomplete="off" />
+      <ul id="suggestions" class="suggestions hidden"></ul>
+    </div>
+
+    <div class="btn-container">
+      <button onclick="getDogImage()">✨ Mostrar imagen</button>
+    </div>
+
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p style="margin-top: 10px; color: #667eea;">Cargando imagen...</p>
+    </div>
+
+    <div class="error-message" id="errorMessage"></div>
+    <div class="success-message" id="successMessage"></div>
+
+    <div class="image-container">
+      <img id="dogImage" src="" alt="" style="display: none;" />
+    </div>
+  </div>
+
+  <script>
+    const img = document.getElementById("dogImage");
+    const breedInput = document.getElementById("breedInput");
+    const suggestions = document.getElementById("suggestions");
+    const loading = document.getElementById("loading");
+    const errorMessage = document.getElementById("errorMessage");
+    const successMessage = document.getElementById("successMessage");
+    let allOptions = [];
+    let selectedBreedValue = "";
+
+    function showMessage(element, message) {
+      element.textContent = message;
+      element.style.display = "block";
+      setTimeout(() => {
+        element.style.display = "none";
+      }, 4000);
+    }
+
+    function hideMessages() {
+      errorMessage.style.display = "none";
+      successMessage.style.display = "none";
+    }
+
+    function getDogImage() {
+      hideMessages();
+      loading.classList.add("active");
+      img.classList.remove("loaded");
+      
+      let url = "https://dog.ceo/api/breeds/image/random";
+      let breedName = "perro aleatorio";
+
+      if (selectedBreedValue) {
+        url = `https://dog.ceo/api/breed/${selectedBreedValue}/images/random`;
+        breedName = breedInput.value || selectedBreedValue;
+      }
+
+      fetch(url)
+        .then(res => {
+          if (!res.ok) {
+            throw new Error('Error en la respuesta del servidor');
+          }
+          return res.json();
+        })
+        .then(data => {
+          if (data.status === 'success') {
+            img.src = data.message;
+            img.style.display = "block";
+            
+            img.onload = () => {
+              loading.classList.remove("active");
+              img.classList.add("loaded");
+              showMessage(successMessage, `¡Imagen de ${breedName} cargada exitosamente!`);
+            };
+          } else {
+            throw new Error('No se pudo obtener la imagen');
+          }
+        })
+        .catch(err => {
+          loading.classList.remove("active");
+          console.error('Error:', err);
+          showMessage(errorMessage, `Error al obtener la imagen: ${err.message}`);
+        });
+    }
+
+    // Cargar lista de razas
+    fetch("https://dog.ceo/api/breeds/list/all")
+      .then(res => res.json())
+      .then(data => {
+        const breeds = data.message;
+
+        for (let breed in breeds) {
+          if (breeds[breed].length > 0) {
+            breeds[breed].forEach(sub => {
+              allOptions.push({ 
+                value: `${breed}/${sub}`, 
+                text: `${capitalizeWords(sub)} (${capitalizeWords(breed)})` 
+              });
+            });
+          } else {
+            allOptions.push({ 
+              value: breed, 
+              text: capitalizeWords(breed) 
+            });
+          }
+        }
+
+        allOptions.sort((a, b) => a.text.localeCompare(b.text));
+      })
+      .catch(err => {
+        console.error('Error cargando razas:', err);
+        showMessage(errorMessage, 'Error al cargar las razas de perros');
+      });
+
+    function capitalizeWords(str) {
+      return str.split(' ').map(word => 
+        word.charAt(0).toUpperCase() + word.slice(1)
+      ).join(' ');
+    }
+
+    breedInput.addEventListener("input", () => {
+      const search = breedInput.value.toLowerCase();
+
+      const filtered = search === ""
+        ? allOptions
+        : allOptions.filter(opt =>
+            opt.text.toLowerCase().includes(search)
+          );
+
+      const match = allOptions.find(opt => opt.text.toLowerCase() === search);
+      selectedBreedValue = match ? match.value : "";
+
+      showSuggestions(filtered);
+    });
+
+    breedInput.addEventListener("focus", () => {
+      if (allOptions.length > 0) {
+        showSuggestions(allOptions);
+      }
+    });
+
+    breedInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        getDogImage();
+        suggestions.classList.add("hidden");
+      }
+    });
+
+    function showSuggestions(options) {
+      suggestions.innerHTML = "";
+
+      if (options.length === 0) {
+        suggestions.classList.add("hidden");
+        return;
+      }
+
+      options.slice(0, 8).forEach(opt => {
+        const li = document.createElement("li");
+        li.textContent = opt.text;
+        li.addEventListener("click", () => {
+          breedInput.value = opt.text;
+          selectedBreedValue = opt.value;
+          suggestions.classList.add("hidden");
+        });
+        suggestions.appendChild(li);
+      });
+
+      suggestions.classList.remove("hidden");
+    }
+
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".custom-select-wrapper")) {
+        suggestions.classList.add("hidden");
+      }
+    });
+
+    // Cargar una imagen inicial
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        getDogImage();
+      }, 500);
+    });
+  </script>
+</body>
+</html>
